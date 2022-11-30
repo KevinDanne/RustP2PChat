@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc;
 
@@ -11,39 +11,46 @@ use crate::message::Message;
 // 3. Pass the connection on the "global" list of connection
 
 pub fn listen(addr: &str, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
-    eprintln!("listening on address: {addr}");
-    let mut listener = TcpListener::bind(addr)?;
+    println!("listening on address: {addr}");
+    let listener = TcpListener::bind(addr)?;
 
     while let Ok((stream, addr)) = listener.accept() {
         let sender = sender.clone();
-        std::thread::spawn(move || validate(stream, addr, sender));
+        std::thread::spawn(move || {
+            if let Ok(_) = validate(&addr) {
+                connect(stream, addr, sender).unwrap();
+            }
+        });
     }
 
     Ok(())
 }
 
-fn validate(
-    mut stream: TcpStream,
-    addr: SocketAddr,
-    sender: mpsc::Sender<ConnectionMsg>,
+pub fn validate(
+    addr: &SocketAddr,
 ) -> Result<()> {
-    eprintln!("Incoming connection from {addr}");
+    println!("Validating incoming connection from {addr}");
+    // TODO enter validation logic
+    println!("Connection validated");
+    Ok(())
+}
 
-    stream.write(b"provide a username\n");
-    let username = Message::frame(&mut stream)?.to_owned_string()?;
+pub fn connect(mut stream: TcpStream, addr: SocketAddr, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
+    println!("Connecting to {addr}");
+    println!("Enter chat name/alias");
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let chat_name = input.trim().to_string();
 
     let writer = stream.try_clone()?;
+    // TODO dont clone
+    sender.send(ConnectionMsg::AcceptedConnection(writer, addr, chat_name.clone()))?;
 
-    sender.send(ConnectionMsg::NewConnection(writer, addr, username));
-
+    // TODO dont clone chat_name every iteration
     loop {
         let message = Message::frame(&mut stream)?;
         let payload = message.to_owned_string()?;
-        sender.send(ConnectionMsg::Incoming(addr, payload));
+        sender.send(ConnectionMsg::Incoming(addr, payload, chat_name.clone()))?;
     }
-
-    // If this is valid the pass the connection on
-    // For now we assume that they are all valid
-    // tx.send((stream, addr));
-    Ok(())
 }

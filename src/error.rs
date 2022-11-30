@@ -1,6 +1,9 @@
 use std::net::AddrParseError;
 use std::string::FromUtf8Error;
 use std::{fmt, io};
+use std::sync::mpsc::SendError;
+
+use crate::connections::ConnectionMsg;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -14,6 +17,8 @@ pub enum Error {
     UTF8(FromUtf8Error),
     // Failed to parse socket address
     AddrParse(AddrParseError),
+    // MPSC send error
+    MPSCSend(SendError<ConnectionMsg>)
 }
 
 impl std::error::Error for Error {}
@@ -25,6 +30,7 @@ impl fmt::Display for Error {
             Self::IO(err) => write!(f, "{err}"),
             Self::UTF8(err) => write!(f, "{err}"),
             Self::AddrParse(err) => write!(f, "{err}"),
+            Self::MPSCSend(err) => write!(f, "{err}"),
         }
     }
 }
@@ -47,5 +53,11 @@ impl From<AddrParseError> for Error {
 impl From<FromUtf8Error> for Error {
     fn from(err: FromUtf8Error) -> Self {
         Self::UTF8(err)
+    }
+}
+
+impl From<SendError<ConnectionMsg>> for Error {
+    fn from(err: SendError<ConnectionMsg>) -> Self {
+        Self::MPSCSend(err)
     }
 }

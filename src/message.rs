@@ -19,7 +19,7 @@ impl Message {
             return Err(Error::ConnectionClosed);
         }
 
-        message.len = byte_count - 1; // subtract one byte to ignore the newline char
+        message.len = byte_count;
 
         Ok(message)
     }

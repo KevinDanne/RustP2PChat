@@ -1,5 +1,4 @@
-use std::io::{self, Write};
-use std::net::SocketAddr;
+use std::io;
 use std::sync::mpsc;
 use std::thread;
 
@@ -10,27 +9,27 @@ mod message;
 mod server;
 
 use commandparser::parse;
-use connections::ConnectionMsg;
-
-enum State {
-    NoUsername,
-    Username(String),
-    PrepMessage(SocketAddr, String),
-}
 
 fn main() {
+    println!("Enter listening port number:");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).expect("Error while reading port input");
+    let listening_port = input.trim().parse::<u16>().expect("Invalid port number entered");
     let (con_sender, con_receiver) = mpsc::channel();
 
-    let listener_handle = {
+    {
         let con_sender = con_sender.clone();
         thread::spawn(move || {
-            server::listen("127.0.0.1:54321", con_sender);
-        })
+            server::listen(&format!("127.0.0.1:{listening_port}"), con_sender).unwrap();
+        });
     };
 
-    let connections_handle = thread::spawn(move || {
-        connections::handle_all_connections(con_receiver);
-    });
+    {
+        let con_sender = con_sender.clone();
+        thread::spawn(move || {
+            connections::handle_all_connections(con_sender, con_receiver);
+        });
+    }
 
     let stdin = io::stdin();
     let mut input = String::new();
@@ -38,8 +37,7 @@ fn main() {
     println!("enter a username");
     stdin.read_line(&mut input).unwrap();
     let username = input.clone();
-
-    let mut state = State::NoUsername;
+    let username = username.trim();
 
     loop {
         input.clear();
@@ -48,7 +46,10 @@ fn main() {
 
         match parse(&input, username.as_bytes().to_vec()) {
             Ok(Some(msg)) => {
-                con_sender.send(msg);
+                if let Err(err) = con_sender.send(msg) {
+                    eprintln!("Error while sending message ton connection handler via mpsc: {err}");
+                    continue;
+                }
             }
             Ok(None) => continue,
             Err(e) => {
@@ -57,10 +58,4 @@ fn main() {
             }
         }
     }
-
-    // -----------------------------------------------------------------------------
-    //   - Join all threads -
-    // -----------------------------------------------------------------------------
-    listener_handle.join().unwrap();
-    connections_handle.join().unwrap();
 }

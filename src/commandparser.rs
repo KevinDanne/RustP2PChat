@@ -1,13 +1,10 @@
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpStream};
+use std::sync::mpsc;
 
 use crate::connections::ConnectionMsg;
 use crate::error::Result;
 
-fn stupid() -> ! {
-    loop {}
-}
-
-pub fn parse(input: &str, sender: Vec<u8>) -> Result<Option<ConnectionMsg>> {
+pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionMsg>> {
     let mut split = input.splitn(2, ' ');
     let command = split
         .next()
@@ -16,10 +13,15 @@ pub fn parse(input: &str, sender: Vec<u8>) -> Result<Option<ConnectionMsg>> {
     let Some(args) = split.next() else { return Ok(None) };
 
     match command {
+        "/connect" => {
+            let recipient = args.parse::<SocketAddr>()?;
+            let con_msg = ConnectionMsg::CreateConnection(recipient);
+            Ok(Some(con_msg))
+        }
         "/msg" => {
             let mut split = args.splitn(2, ' ');
-            let recipient = split.next().expect("yeye you know the drill");
-            let recipient = recipient.parse::<SocketAddr>()?;
+            let chat_name = split.next().unwrap();
+            let chat_name = chat_name.to_string();
             let msg = match split.next() {
                 Some(msg) => msg.as_bytes().to_vec(),
                 None => {
@@ -29,8 +31,8 @@ pub fn parse(input: &str, sender: Vec<u8>) -> Result<Option<ConnectionMsg>> {
             };
             let con_msg = ConnectionMsg::Outgoing {
                 msg,
-                sender,
-                recipient,
+                sender: sender_username,
+                chat_name,
             };
             Ok(Some(con_msg))
         }
@@ -38,7 +40,7 @@ pub fn parse(input: &str, sender: Vec<u8>) -> Result<Option<ConnectionMsg>> {
             let msg = args.as_bytes().to_vec();
             let con_msg = ConnectionMsg::Broadcast {
                 msg,
-                sender,
+                sender: sender_username,
             };
             Ok(Some(con_msg))
         }
