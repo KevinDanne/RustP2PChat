@@ -24,12 +24,12 @@ impl Connection {
 
 pub enum ConnectionMsg {
     CreateConnection(SocketAddr),
-    AcceptedConnection(TcpStream, SocketAddr, String),
-    Incoming(SocketAddr, String, String),
+    AcceptedConnection(TcpStream, SocketAddr),
+    Incoming(SocketAddr, String),
     Outgoing {
         msg: Vec<u8>,
         sender: Vec<u8>,
-        chat_name: String,
+        receiver: SocketAddr,
     },
     Broadcast {
         msg: Vec<u8>,
@@ -56,12 +56,12 @@ pub fn handle_all_connections(sender: mpsc::Sender<ConnectionMsg>, receiver: mps
                     server::connect(stream, addr, sender_clone).unwrap();
                 });
             }
-            ConnectionMsg::AcceptedConnection(stream, addr, alias) => {
-                connections.insert(alias, (stream, addr));
+            ConnectionMsg::AcceptedConnection(stream, addr) => {
+                connections.insert(addr, stream);
             }
-            ConnectionMsg::Incoming(_addr, chat_name, payload) => {
-                if let None = connections.get(&chat_name) {
-                    eprintln!("No chat found with name {chat_name}");
+            ConnectionMsg::Incoming(addr, payload) => {
+                if let None = connections.get(&addr) {
+                    eprintln!("No chat found for address {addr}");
                     continue;
                 }
                 println!("{payload}");
@@ -69,11 +69,10 @@ pub fn handle_all_connections(sender: mpsc::Sender<ConnectionMsg>, receiver: mps
             ConnectionMsg::Outgoing {
                 msg,
                 sender,
-                chat_name,
+                receiver
             } => {
-                let Some((stream, _)) = connections.get_mut(&chat_name) else {
-                    eprintln!("No chat found with name {chat_name}");
-                    eprintln!("{:?}", connections.keys().collect::<Vec<&String>>());
+                let Some(stream) = connections.get_mut(&receiver) else {
+                    eprintln!("No chat found for address {receiver}");
                     continue;
                 };
                 stream.write_all(&sender);
@@ -84,7 +83,7 @@ pub fn handle_all_connections(sender: mpsc::Sender<ConnectionMsg>, receiver: mps
                 msg,
                 sender,
             } => {
-                for (_, (stream, _)) in connections.iter_mut() {
+                for (_, stream) in connections.iter_mut() {
                     stream.write_all(&sender);
                     stream.write_all(b" > ");
                     stream.write_all(&msg);

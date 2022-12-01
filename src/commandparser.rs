@@ -20,8 +20,8 @@ pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionM
         }
         "/msg" => {
             let mut split = args.splitn(2, ' ');
-            let chat_name = split.next().unwrap();
-            let chat_name = chat_name.to_string();
+            let receiver = split.next().unwrap();
+            let receiver = receiver.parse::<SocketAddr>()?;
             let msg = match split.next() {
                 Some(msg) => msg.as_bytes().to_vec(),
                 None => {
@@ -32,7 +32,7 @@ pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionM
             let con_msg = ConnectionMsg::Outgoing {
                 msg,
                 sender: sender_username,
-                chat_name,
+                receiver,
             };
             Ok(Some(con_msg))
         }

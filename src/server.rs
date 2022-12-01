@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, BufRead};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc;
 
@@ -17,7 +17,7 @@ pub fn listen(addr: &str, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
     while let Ok((stream, addr)) = listener.accept() {
         let sender = sender.clone();
         std::thread::spawn(move || {
-            if let Ok(_) = validate(&addr) {
+            if let Ok(()) = validate(&addr) {
                 connect(stream, addr, sender).unwrap();
             }
         });
@@ -37,20 +37,15 @@ pub fn validate(
 
 pub fn connect(mut stream: TcpStream, addr: SocketAddr, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
     println!("Connecting to {addr}");
-    println!("Enter chat name/alias");
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let chat_name = input.trim().to_string();
-
+    
     let writer = stream.try_clone()?;
     // TODO dont clone
-    sender.send(ConnectionMsg::AcceptedConnection(writer, addr, chat_name.clone()))?;
+    sender.send(ConnectionMsg::AcceptedConnection(writer, addr))?;
 
     // TODO dont clone chat_name every iteration
     loop {
         let message = Message::frame(&mut stream)?;
         let payload = message.to_owned_string()?;
-        sender.send(ConnectionMsg::Incoming(addr, payload, chat_name.clone()))?;
+        sender.send(ConnectionMsg::Incoming(addr, payload))?;
     }
 }
