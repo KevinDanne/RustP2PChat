@@ -36,6 +36,36 @@ pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionM
             };
             Ok(Some(con_msg))
         }
+        "/create-group" => {
+            let mut split = args.split(' ');
+            let group_name = split.next().unwrap().to_string();
+            let mut participants = Vec::new();
+
+            for arg in split {
+                let participant = arg.parse::<SocketAddr>()?;
+                participants.push(participant);
+            }
+
+            let con_msg = ConnectionMsg::CreateGroup(group_name, participants);
+            Ok(Some(con_msg))
+        }
+        "/msg-group" => {
+            let mut split = args.splitn(2, ' ');
+            let group_name = split.next().unwrap().to_string();
+            let msg = match split.next() {
+                Some(msg) => msg.as_bytes().to_vec(),
+                None => {
+                    eprintln!("no message provided");
+                    return Ok(None);
+                }
+            };
+            let con_msg = ConnectionMsg::OutgoingGroup {
+                msg,
+                sender: sender_username,
+                group_name,
+            };
+            Ok(Some(con_msg))
+        }
         "/broadcast" => {
             let msg = args.as_bytes().to_vec();
             let con_msg = ConnectionMsg::Broadcast {

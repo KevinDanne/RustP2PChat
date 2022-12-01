@@ -25,11 +25,17 @@ impl Connection {
 pub enum ConnectionMsg {
     CreateConnection(SocketAddr),
     AcceptedConnection(TcpStream, SocketAddr),
+    CreateGroup(String, Vec<SocketAddr>),
     Incoming(SocketAddr, String),
     Outgoing {
         msg: Vec<u8>,
         sender: Vec<u8>,
         receiver: SocketAddr,
+    },
+    OutgoingGroup {
+        msg: Vec<u8>,
+        sender: Vec<u8>,
+        group_name: String
     },
     Broadcast {
         msg: Vec<u8>,
@@ -39,6 +45,7 @@ pub enum ConnectionMsg {
 
 pub fn handle_all_connections(sender: mpsc::Sender<ConnectionMsg>, receiver: mpsc::Receiver<ConnectionMsg>) {
     let mut connections = HashMap::new();
+    let mut groups = HashMap::new();
 
     while let Ok(msg) = receiver.recv() {
         match msg {
@@ -59,6 +66,9 @@ pub fn handle_all_connections(sender: mpsc::Sender<ConnectionMsg>, receiver: mps
             ConnectionMsg::AcceptedConnection(stream, addr) => {
                 connections.insert(addr, stream);
             }
+            ConnectionMsg::CreateGroup(name, participants) => {
+                groups.insert(name, participants);
+            }
             ConnectionMsg::Incoming(addr, payload) => {
                 if let None = connections.get(&addr) {
                     eprintln!("No chat found for address {addr}");
@@ -78,6 +88,27 @@ pub fn handle_all_connections(sender: mpsc::Sender<ConnectionMsg>, receiver: mps
                 stream.write_all(&sender);
                 stream.write_all(b" > ");
                 stream.write_all(&msg);
+            }
+            ConnectionMsg::OutgoingGroup {
+                msg,
+                sender,
+                group_name
+            } => {
+                let Some(participants) = groups.get(&group_name) else {
+                    eprintln!("No group found with name {group_name}");
+                    continue;
+                };
+                for addr in participants {
+                    let Some(stream) = connections.get_mut(addr) else {
+                        eprintln!("No connection found for addr {addr}");
+                        continue;
+                    };
+                    stream.write_all(&sender);
+                    stream.write_all(b" (GROUP: ");
+                    stream.write_all(group_name.as_bytes());
+                    stream.write_all(b") > ");
+                    stream.write_all(&msg);
+                }
             }
             ConnectionMsg::Broadcast {
                 msg,
