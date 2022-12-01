@@ -20,7 +20,7 @@ fn main() {
     {
         let con_sender = con_sender.clone();
         thread::spawn(move || {
-            server::listen(&format!("127.0.0.1:{listening_port}"), con_sender).unwrap();
+            server::listen(&format!("0.0.0.0:{listening_port}"), con_sender).unwrap();
         });
     };
 
