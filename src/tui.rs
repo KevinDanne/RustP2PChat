@@ -76,7 +76,7 @@ impl Tui {
     }
 
     pub fn sender(&self) -> mpsc::Sender<Event<StdoutMsg>> {
-        self.runtime.tx()
+        self.runtime.sender()
     }
 
     pub fn start(self, con_sender: mpsc::Sender<ConnectionMsg>, username: &str) {
@@ -84,8 +84,8 @@ impl Tui {
             fs::read_to_string("./templates/main.tiny").expect("Cant read template.tiny");
         let mut ctx = DataCtx::empty();
         let messages: Vec<StdoutMsg> = Vec::new();
-        ctx.insert("input", "");
-        ctx.insert("messages", messages);
+        ctx.set("input", "");
+        ctx.set("messages", messages);
 
         self.runtime.start(template, ctx, |event, _root, ctx, tx| {
             if event.ctrl_c() {
@@ -124,10 +124,8 @@ impl Tui {
             }
 
             if let Event::User(msg) = event {
-                let value = ctx.get_mut("messages").expect("No messages found in context");
-                if let Value::List(messages) = value {
-                    messages.push(msg.into());
-                }
+                let messages = ctx.get_list_mut("messages").expect("No messages found in context");
+                messages.push(msg.into());
             }
         }).unwrap();
     }

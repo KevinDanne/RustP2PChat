@@ -4,9 +4,8 @@ version = 3
 
 [[package]]
 name = "anathema"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e65646e4a3edabd7933dec49d4f5c91ea91a19ccf18767a7e1cb1e04f026f24a"
+version = "0.2.0"
+source = "git+https://github.com/togglebyte/anathema?branch=main#3b82067549c132225db4dc801b6e39223cd3f450"
 dependencies = [
  "bitflags",
  "crossterm",
