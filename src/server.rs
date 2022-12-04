@@ -33,12 +33,14 @@ pub fn listen(
 }
 
 pub fn validate(addr: &SocketAddr, tui_event_sender: TuiEventSender) -> Result<()> {
-    tui_event_sender.send(Event::User(StdoutMsg::with_foreground(format!(
+    tui_event_sender.send(Event::User(StdoutMsg::new(format!(
         "Validating incoming connection from {addr}"
-    ), Color::Green)));
+    ))));
     // TODO enter validation logic
-    tui_event_sender.send(Event::User(StdoutMsg::new(
+    tui_event_sender.send(Event::User(StdoutMsg::with_color(
         "Connection validated".to_string(),
+        Color::Green,
+        Color::Black
     )));
     Ok(())
 }

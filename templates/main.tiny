@@ -2,7 +2,7 @@ vstack:
     border:
         vstack:
             for [data: {{ messages }}, binding: message]:
-                text [id: {{ message.msg }}, foreground: {{ message.foreground }}, background: {{ message.background }}]: "{{ message.msg }}"
+                text [id: {{ message.msg }}, foreground: {{ message.foreground }}]: "{{ message.foreground }}"
 
     border:
         text: "{{ input }}"
