@@ -12,8 +12,6 @@ mod tui;
 use tui::Tui;
 
 fn main() {
-    let tui = Tui::new();
-
     println!("Enter listening port number:");
     let mut input = String::new();
     io::stdin()
@@ -23,7 +21,15 @@ fn main() {
         .trim()
         .parse::<u16>()
         .expect("Invalid port number entered");
+
+    println!("enter a username");
+    input.clear();
+    io::stdin().read_line(&mut input).unwrap();
+    let username = input.trim();
+
     let (con_sender, con_receiver) = mpsc::channel();
+
+    let tui = Tui::new();
 
     {
         let con_sender = con_sender.clone();
@@ -45,12 +51,6 @@ fn main() {
             connections::handle_all_connections(con_sender, con_receiver, tui_event_sender);
         });
     }
-
-    println!("enter a username");
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    let username = input.clone();
-    let username = username.trim();
 
     tui.start(con_sender, username);
 }
