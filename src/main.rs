@@ -7,55 +7,50 @@ mod connections;
 mod error;
 mod message;
 mod server;
+mod tui;
 
-use commandparser::parse;
+use tui::Tui;
 
 fn main() {
+    let tui = Tui::new();
+
     println!("Enter listening port number:");
     let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Error while reading port input");
-    let listening_port = input.trim().parse::<u16>().expect("Invalid port number entered");
+    io::stdin()
+        .read_line(&mut input)
+        .expect("Error while reading port input");
+    let listening_port = input
+        .trim()
+        .parse::<u16>()
+        .expect("Invalid port number entered");
     let (con_sender, con_receiver) = mpsc::channel();
 
     {
         let con_sender = con_sender.clone();
+        let tui_event_sender = tui.sender();
         thread::spawn(move || {
-            server::listen(&format!("0.0.0.0:{listening_port}"), con_sender).unwrap();
+            server::listen(
+                &format!("0.0.0.0:{listening_port}"),
+                con_sender,
+                tui_event_sender,
+            )
+            .unwrap();
         });
     };
 
     {
         let con_sender = con_sender.clone();
+        let tui_event_sender = tui.sender();
         thread::spawn(move || {
-            connections::handle_all_connections(con_sender, con_receiver);
+            connections::handle_all_connections(con_sender, con_receiver, tui_event_sender);
         });
     }
 
-    let stdin = io::stdin();
-    let mut input = String::new();
-
     println!("enter a username");
-    stdin.read_line(&mut input).unwrap();
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
     let username = input.clone();
     let username = username.trim();
 
-    loop {
-        input.clear();
-        stdin.read_line(&mut input).unwrap();
-        input.pop(); // remove the newline char
-
-        match parse(&input, username.as_bytes().to_vec()) {
-            Ok(Some(msg)) => {
-                if let Err(err) = con_sender.send(msg) {
-                    eprintln!("Error while sending message ton connection handler via mpsc: {err}");
-                    continue;
-                }
-            }
-            Ok(None) => continue,
-            Err(e) => {
-                eprintln!("{e}");
-                continue;
-            }
-        }
-    }
+    tui.start(con_sender, username);
 }

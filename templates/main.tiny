@@ -1,0 +1,8 @@
+vstack:
+    border:
+        vstack:
+            for [data: {{ messages }}, binding: message]:
+                text [id: {{ message.msg }}, foreground: {{ message.foreground }}, background: {{ message.background }}]: "{{ message.msg }}"
+
+    border:
+        text: "{{ input }}"

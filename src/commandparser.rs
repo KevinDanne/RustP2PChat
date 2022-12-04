@@ -1,10 +1,14 @@
-use std::net::{SocketAddr, TcpStream};
-use std::sync::mpsc;
+use std::net::SocketAddr;
 
 use crate::connections::ConnectionMsg;
 use crate::error::Result;
+use crate::tui::{Event, StdoutMsg, TuiEventSender};
 
-pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionMsg>> {
+pub fn parse(
+    input: &str,
+    sender_username: Vec<u8>,
+    tui_event_sender: TuiEventSender,
+) -> Result<Option<ConnectionMsg>> {
     let mut split = input.splitn(2, ' ');
     let command = split
         .next()
@@ -25,7 +29,9 @@ pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionM
             let msg = match split.next() {
                 Some(msg) => msg.as_bytes().to_vec(),
                 None => {
-                    eprintln!("no message provided");
+                    tui_event_sender.send(Event::User(StdoutMsg::new(
+                        "no message provided".to_string(),
+                    )));
                     return Ok(None);
                 }
             };
@@ -55,7 +61,9 @@ pub fn parse(input: &str, sender_username: Vec<u8>) -> Result<Option<ConnectionM
             let msg = match split.next() {
                 Some(msg) => msg.as_bytes().to_vec(),
                 None => {
-                    eprintln!("no message provided");
+                    tui_event_sender.send(Event::User(StdoutMsg::new(
+                        "no message provided".to_string(),
+                    )));
                     return Ok(None);
                 }
             };

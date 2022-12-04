@@ -1,24 +1,30 @@
-use std::io::{self, BufRead};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::sync::mpsc;
 
-use crate::connections::ConnectionMsg;
+use crate::connections::{ConnectionMsg, ConnectionMsgSender};
 use crate::error::Result;
 use crate::message::Message;
+use crate::tui::{Event, StdoutMsg, TuiEventSender, Color};
 
 // 1. Accept incoming connectioin
 // 2. Identify connection (e.g recieve a name)
 // 3. Pass the connection on the "global" list of connection
 
-pub fn listen(addr: &str, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
-    println!("listening on address: {addr}");
+pub fn listen(
+    addr: &str,
+    con_sender: ConnectionMsgSender,
+    tui_event_sender: TuiEventSender,
+) -> Result<()> {
+    tui_event_sender.send(Event::User(StdoutMsg::new(format!(
+        "listening on address: {addr}"
+    ))));
     let listener = TcpListener::bind(addr)?;
 
     while let Ok((stream, addr)) = listener.accept() {
-        let sender = sender.clone();
+        let con_sender = con_sender.clone();
+        let tui_event_sender = tui_event_sender.clone();
         std::thread::spawn(move || {
-            if let Ok(()) = validate(&addr) {
-                connect(stream, addr, sender).unwrap();
+            if let Ok(()) = validate(&addr, tui_event_sender.clone()) {
+                connect(stream, addr, con_sender, tui_event_sender).unwrap();
             }
         });
     }
@@ -26,26 +32,33 @@ pub fn listen(addr: &str, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
     Ok(())
 }
 
-pub fn validate(
-    addr: &SocketAddr,
-) -> Result<()> {
-    println!("Validating incoming connection from {addr}");
+pub fn validate(addr: &SocketAddr, tui_event_sender: TuiEventSender) -> Result<()> {
+    tui_event_sender.send(Event::User(StdoutMsg::with_foreground(format!(
+        "Validating incoming connection from {addr}"
+    ), Color::Green)));
     // TODO enter validation logic
-    println!("Connection validated");
+    tui_event_sender.send(Event::User(StdoutMsg::new(
+        "Connection validated".to_string(),
+    )));
     Ok(())
 }
 
-pub fn connect(mut stream: TcpStream, addr: SocketAddr, sender: mpsc::Sender<ConnectionMsg>) -> Result<()> {
-    println!("Connecting to {addr}");
-    
+pub fn connect(
+    mut stream: TcpStream,
+    addr: SocketAddr,
+    con_sender: ConnectionMsgSender,
+    tui_event_sender: TuiEventSender,
+) -> Result<()> {
+    tui_event_sender.send(Event::User(StdoutMsg::new(format!("Connecting to {addr}"))));
+
     let writer = stream.try_clone()?;
     // TODO dont clone
-    sender.send(ConnectionMsg::AcceptedConnection(writer, addr))?;
+    con_sender.send(ConnectionMsg::AcceptedConnection(writer, addr))?;
 
     // TODO dont clone chat_name every iteration
     loop {
         let message = Message::frame(&mut stream)?;
         let payload = message.to_owned_string()?;
-        sender.send(ConnectionMsg::Incoming(addr, payload))?;
+        con_sender.send(ConnectionMsg::Incoming(addr, payload))?;
     }
 }

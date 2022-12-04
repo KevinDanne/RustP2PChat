@@ -1,7 +1,7 @@
 use std::net::AddrParseError;
 use std::string::FromUtf8Error;
-use std::{fmt, io};
 use std::sync::mpsc::SendError;
+use std::{fmt, io};
 
 use crate::connections::ConnectionMsg;
 
@@ -18,7 +18,7 @@ pub enum Error {
     // Failed to parse socket address
     AddrParse(AddrParseError),
     // MPSC send error
-    MPSCSend(SendError<ConnectionMsg>)
+    MPSCSend(SendError<ConnectionMsg>),
 }
 
 impl std::error::Error for Error {}
