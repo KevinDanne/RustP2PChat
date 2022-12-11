@@ -6,7 +6,7 @@ use anathema::runtime::{KeyCode, KeyEvent, Runtime};
 use anathema::templates::DataCtx;
 use anathema::widgets::Value;
 
-use crate::commandparser::parse;
+use crate::commandparser::{parse, Command};
 use crate::connections::ConnectionMsg;
 
 pub use anathema::runtime::Event;
@@ -100,8 +100,8 @@ impl Tui {
                         input.pop();
                     }
                     KeyCode::Enter => {
-                        match parse(input, username.as_bytes().to_vec(), tx.clone()) {
-                            Ok(Some(msg)) => {
+                        match parse(input, username.as_bytes().to_vec()) {
+                            Ok(Command::ConnectionMsg(msg)) => {
                                 if let Err(err) = con_sender.send(msg) {
                                     tx.send(Event::User(StdoutMsg::new(format!(
                                         "Error while sending message ton connection handler via mpsc: {err}"
@@ -109,7 +109,24 @@ impl Tui {
                                     return;
                                 }
                             }
-                            Ok(None) => return,
+                            Ok(Command::NotFound) => {
+                                tx.send(Event::User(StdoutMsg::new("Command not found. Use /help for details".to_string())));
+                                return;
+                            }
+                            Ok(Command::MissingArgs) => {
+                                tx.send(Event::User(StdoutMsg::new("Missing params. Use /help for details".to_string())));
+                                return;
+                            }
+                            Ok(Command::Help) => {
+                                tx.send(Event::User(StdoutMsg::new("
+                                /help Print help message\n
+                                /connect <IP:PORT> <CHAT_NAME> Create new connection/chat\n
+                                /msg <CHAT_NAME> <MSG> Print help message\n
+                                /create-group <GROUP_NAME> <CHAT_NAME...> Print help message\n
+                                /msg-group <GROUP_NAME> <MSG> Print help message\n
+                                /broadcast <MSG> Print message to all connections/chats\n
+                                ".to_string())));
+                            }
                             Err(e) => {
                                 tx.send(Event::User(StdoutMsg::new(format!(
                                     "{e}"

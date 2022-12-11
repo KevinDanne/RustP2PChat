@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 use std::sync::mpsc;
 use std::thread;
 
@@ -12,7 +12,10 @@ mod tui;
 use tui::Tui;
 
 fn main() {
-    println!("Enter listening port number:");
+    let mut stdout = io::stdout();
+
+    print!("Enter listening port number: ");
+    stdout.flush();
     let mut input = String::new();
     io::stdin()
         .read_line(&mut input)
@@ -22,7 +25,8 @@ fn main() {
         .parse::<u16>()
         .expect("Invalid port number entered");
 
-    println!("enter a username");
+    print!("enter a username: ");
+    stdout.flush();
     input.clear();
     io::stdin().read_line(&mut input).unwrap();
     let username = input.trim();

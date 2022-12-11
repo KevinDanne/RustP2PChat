@@ -27,14 +27,14 @@ impl Connection {
 }
 
 pub enum ConnectionMsg {
-    CreateConnection(SocketAddr),
-    AcceptedConnection(TcpStream, SocketAddr),
-    CreateGroup(String, Vec<SocketAddr>),
-    Incoming(SocketAddr, String),
+    CreateConnection(SocketAddr, String),
+    AcceptedConnection(TcpStream, String),
+    CreateGroup(String, Vec<String>),
+    Incoming(String, String),
     Outgoing {
         msg: Vec<u8>,
         sender: Vec<u8>,
-        receiver: SocketAddr,
+        chat_name: String,
     },
     OutgoingGroup {
         msg: Vec<u8>,
@@ -57,7 +57,7 @@ pub fn handle_all_connections(
 
     while let Ok(msg) = con_receiver.recv() {
         match msg {
-            ConnectionMsg::CreateConnection(addr) => {
+            ConnectionMsg::CreateConnection(addr, chat_name) => {
                 let stream = match TcpStream::connect(&addr) {
                     Ok(stream) => stream,
                     Err(err) => {
@@ -71,11 +71,11 @@ pub fn handle_all_connections(
                 let con_sender = con_sender.clone();
                 let tui_event_sender = tui_event_sender.clone();
                 thread::spawn(move || {
-                    server::connect(stream, addr, con_sender, tui_event_sender).unwrap();
+                    server::connect(stream, addr, chat_name, con_sender, tui_event_sender).unwrap();
                 });
             }
-            ConnectionMsg::AcceptedConnection(stream, addr) => {
-                connections.insert(addr, stream);
+            ConnectionMsg::AcceptedConnection(stream, chat_name) => {
+                connections.insert(chat_name, stream);
             }
             ConnectionMsg::CreateGroup(name, participants) => {
                 groups.insert(name, participants);
@@ -92,11 +92,11 @@ pub fn handle_all_connections(
             ConnectionMsg::Outgoing {
                 msg,
                 sender,
-                receiver,
+                chat_name,
             } => {
-                let Some(stream) = connections.get_mut(&receiver) else {
+                let Some(stream) = connections.get_mut(&chat_name) else {
                     tui_event_sender.send(Event::User(StdoutMsg::new(format!(
-                        "No chat found for address {receiver}"
+                        "No chat found with name {chat_name}"
                     ))));
                     continue;
                 };
@@ -119,10 +119,10 @@ pub fn handle_all_connections(
                     ))));
                     continue;
                 };
-                for addr in participants {
-                    let Some(stream) = connections.get_mut(addr) else {
+                for chat_name in participants {
+                    let Some(stream) = connections.get_mut(chat_name) else {
                         tui_event_sender.send(Event::User(StdoutMsg::new(format!(
-                            "No connection found for addr {addr}"
+                            "No connection found with name {chat_name}"
                         ))));
                         continue;
                     };
