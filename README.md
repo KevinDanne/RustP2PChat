@@ -1,4 +1,4 @@
-# GoP2PChat
+# RustP2PChat
 
 A simple command based peer to peer chat written in rust
 
