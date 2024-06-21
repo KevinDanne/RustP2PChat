@@ -119,12 +119,12 @@ impl Tui {
                             }
                             Ok(Command::Help) => {
                                 tx.send(Event::User(StdoutMsg::new("
-                                /help Print help message\n
-                                /connect <IP:PORT> <CHAT_NAME> Create new connection/chat\n
-                                /msg <CHAT_NAME> <MSG> Print help message\n
-                                /create-group <GROUP_NAME> <CHAT_NAME...> Print help message\n
-                                /msg-group <GROUP_NAME> <MSG> Print help message\n
-                                /broadcast <MSG> Print message to all connections/chats\n
+                                /help -> Print help message\n
+                                /connect <IP:PORT> <CHAT_NAME> -> Create new chat\n
+                                /msg <CHAT_NAME> <MSG> -> Send message to chat\n
+                                /create-group <GROUP_NAME> <CHAT_NAME...> -> Create a group with the specified chats\n
+                                /msg-group <GROUP_NAME> <MSG> -> Send message to group\n
+                                /broadcast <MSG> -> Send message to all chats\n
                                 ".to_string())));
                             }
                             Err(e) => {
